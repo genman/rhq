@@ -93,7 +93,9 @@ public class DataPurgeJob extends AbstractStatefulJob {
             purgeEverything(systemConfig);
             performDatabaseMaintenance(LookupUtil.getSystemManager(), systemConfig);
             calculateAutoBaselines(LookupUtil.getMeasurementBaselineManager());
-            calculateOOBs(oneHourAggregates);
+            if (Boolean.getBoolean("oob")) {
+                calculateOOBs(oneHourAggregates);
+            }
         } catch (Exception e) {
             LOG.error("Data Purge Job FAILED TO COMPLETE. Cause: " + e);
         } finally {
