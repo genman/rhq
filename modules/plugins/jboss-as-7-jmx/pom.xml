@@ -22,11 +22,13 @@
       <groupId>org.rhq</groupId>
       <artifactId>rhq-jboss-as-7-plugin</artifactId>
       <version>${project.version}</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.rhq</groupId>
       <artifactId>rhq-jmx-plugin</artifactId>
       <version>${project.version}</version>
+      <scope>provided</scope>
     </dependency>
   </dependencies>
 

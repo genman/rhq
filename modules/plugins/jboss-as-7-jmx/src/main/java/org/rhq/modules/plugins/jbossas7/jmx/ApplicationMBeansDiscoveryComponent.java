@@ -25,8 +25,13 @@ import static org.rhq.modules.plugins.jbossas7.jmx.ApplicationMBeansDiscoveryCom
 import static org.rhq.modules.plugins.jbossas7.jmx.ApplicationMBeansDiscoveryComponent.PluginConfigProps.NEW_RESOURCE_VERSION;
 
 import java.io.File;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.Collections;
+import java.util.Properties;
 import java.util.Set;
+
+import javax.management.remote.JMXConnectorFactory;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -35,7 +40,6 @@ import org.mc4j.ems.connection.EmsConnection;
 import org.mc4j.ems.connection.settings.ConnectionSettings;
 import org.mc4j.ems.connection.support.ConnectionProvider;
 import org.mc4j.ems.connection.support.metadata.JSR160ConnectionTypeDescriptor;
-
 import org.rhq.core.domain.configuration.Configuration;
 import org.rhq.core.domain.configuration.PropertySimple;
 import org.rhq.core.pluginapi.inventory.DiscoveredResourceDetails;
@@ -43,6 +47,7 @@ import org.rhq.core.pluginapi.inventory.ResourceDiscoveryComponent;
 import org.rhq.core.pluginapi.inventory.ResourceDiscoveryContext;
 import org.rhq.modules.plugins.jbossas7.BaseComponent;
 import org.rhq.modules.plugins.jbossas7.BaseServerComponent;
+import org.rhq.modules.plugins.jbossas7.JBossProductType;
 import org.rhq.modules.plugins.jbossas7.ManagedASComponent;
 import org.rhq.modules.plugins.jbossas7.StandaloneASComponent;
 import org.rhq.modules.plugins.jbossas7.helper.ServerPluginConfiguration;
@@ -59,25 +64,24 @@ import org.rhq.modules.plugins.jbossas7.helper.ServerPluginConfiguration;
  * <ul>
  *     <li>depend on the AS7 plugin and re-use its classes (<em>useClasses</em> attribute set to true in the plugin
  *     descriptor);</li>
- *     <li>embed the JMX plugin as a library.</li>
  * </ul>
  *
  * <p>The resource type using this class (or a subclass of this class) as a discovery component must indicate which type
  * of server it runs inside. It may be either a <em>JBossAS7 Standalone Server</em> or a <em>Managed Server</em>.</p>
- * 
+ *
  * <p>Plugins authors are <em>required</em> to provide a resource key and name and <em>may</em>provide a resource
  * description and version by declaring plugin configuration properties of the following names:</p>
- * 
+ *
  * <ul>
  *     <li>{@link PluginConfigProps#NEW_RESOURCE_KEY}</li>
  *     <li>{@link PluginConfigProps#NEW_RESOURCE_NAME}</li>
  *     <li>{@link PluginConfigProps#NEW_RESOURCE_DESCRIPTION}</li>
  *     <li>{@link PluginConfigProps#NEW_RESOURCE_VERSION}</li>
  * </ul>
- * 
+ *
  * <p>Alternatively, they can subclass create a subclass of this discovery component and override one/some/all of the
  * following methods:</p>
- * 
+ *
  * <ul>
  *     <li>{@link #getNewResourceKey(org.rhq.core.domain.configuration.Configuration)}</li>
  *     <li>{@link #getNewResourceName(org.rhq.core.domain.configuration.Configuration)}</li>
@@ -194,6 +198,7 @@ import org.rhq.modules.plugins.jbossas7.helper.ServerPluginConfiguration;
  * @see ApplicationMBeansComponent
  */
 public class ApplicationMBeansDiscoveryComponent implements ResourceDiscoveryComponent<BaseComponent<?>> {
+    private static final String DEFAULT_PROTOCOL = "remoting-jmx";
     private static final Log LOG = LogFactory.getLog(ApplicationMBeansDiscoveryComponent.class);
 
     public static final class PluginConfigProps {
@@ -213,6 +218,7 @@ public class ApplicationMBeansDiscoveryComponent implements ResourceDiscoveryCom
     private static final String USERNAME = "username";
     private static final String PASSWORD = "password";
     private static final String CLIENT_JAR_LOCATION = "clientJarLocation";
+    private static final String PROTOCOL = "protocol"; // remoting-jmx" or "http-remoting-jmx";
 
     private static final int STANDALONE_REMOTING_PORT_OFFSET = 9;
     private static final int DOMAIN_REMOTING_PORT_DEFAULT = 4447;
@@ -230,7 +236,7 @@ public class ApplicationMBeansDiscoveryComponent implements ResourceDiscoveryCom
 
         pluginConfig.setSimpleValue(HOSTNAME, serverPluginConfiguration.getHostname());
 
-        int port;
+        int port = serverPluginConfiguration.getPort();
         String username, password;
         if (parentComponent instanceof ManagedASComponent) {
             ManagedASComponent managedASComponent = (ManagedASComponent) parentComponent;
@@ -240,12 +246,16 @@ public class ApplicationMBeansDiscoveryComponent implements ResourceDiscoveryCom
                 LOG.warn("Could not find Managed Server socket binding offset, skipping discovery");
                 return Collections.emptySet();
             }
-            port = offsetProp.getIntegerValue() + DOMAIN_REMOTING_PORT_DEFAULT;
+            if (serverPluginConfiguration.getProductType() != JBossProductType.WILDFLY8) {
+                port = offsetProp.getIntegerValue() + DOMAIN_REMOTING_PORT_DEFAULT;
+            }
             String[] credentials = getCredentialsForManagedAS();
             username = credentials[0];
             password = credentials[1];
         } else if (parentComponent instanceof StandaloneASComponent) {
-            port = serverPluginConfiguration.getPort() + STANDALONE_REMOTING_PORT_OFFSET;
+            if (serverPluginConfiguration.getProductType() != JBossProductType.WILDFLY8) {
+                port = serverPluginConfiguration.getPort() + STANDALONE_REMOTING_PORT_OFFSET;
+            }
             username = serverPluginConfiguration.getUser();
             password = serverPluginConfiguration.getPassword();
         } else {
@@ -258,15 +268,18 @@ public class ApplicationMBeansDiscoveryComponent implements ResourceDiscoveryCom
 
         File clientJarFile = new File(serverPluginConfiguration.getHomeDir(), "bin" + File.separator + "client"
             + File.separator + "jboss-client.jar");
-        if (!clientJarFile.isFile()) {
-            LOG.warn(clientJarFile + " does not exist.");
-            return Collections.emptySet();
+        if (clientJarFile.isFile()) {
+            pluginConfig.setSimpleValue(CLIENT_JAR_LOCATION, clientJarFile.getAbsolutePath());
         }
-        pluginConfig.setSimpleValue(CLIENT_JAR_LOCATION, clientJarFile.getAbsolutePath());
+        if (serverPluginConfiguration.getProductType() == JBossProductType.WILDFLY8) {
+            // TODO could still support the old way on wildfly?
+            pluginConfig.setSimpleValue(PROTOCOL, "http-remoting-jmx");
+        }
 
         EmsConnection emsConnection = null;
         try {
             emsConnection = loadEmsConnection(pluginConfig);
+            LOG.debug("loadEmsConnection " + emsConnection);
             if (emsConnection == null) {
                 // An error occured while creating the connection
                 return Collections.emptySet();
@@ -294,7 +307,7 @@ public class ApplicationMBeansDiscoveryComponent implements ResourceDiscoveryCom
      * with an EMS query string.
      *
      * @param pluginConfig - the plugin configuration object for the {@link ApplicationMBeansComponent} that may be
-     *                     created 
+     *                     created
      * @param emsConnection - an active emsConnection which can be used to communicate with the server
      * @return true if application MBeans were detected, false otherwise
      */
@@ -370,51 +383,54 @@ public class ApplicationMBeansDiscoveryComponent implements ResourceDiscoveryCom
      * Creates a new {@link EmsConnection} object.
      *
      * @param pluginConfig - a plugin configuration object of the {@link ApplicationMBeansComponent}
-     * @return a new {@link EmsConnection} object or null if connecting failed 
+     * @return a new {@link EmsConnection} object or null if connecting failed
      */
     public static EmsConnection loadEmsConnection(Configuration pluginConfig) {
-        EmsConnection emsConnection = null;
         try {
-            File clientJarFile = new File(pluginConfig.getSimpleValue(CLIENT_JAR_LOCATION));
-
             ConnectionSettings connectionSettings = new ConnectionSettings();
-            connectionSettings.initializeConnectionType(new A7ConnectionTypeDescriptor(clientJarFile));
-            connectionSettings.setLibraryURI(clientJarFile.getParent());
+
+            // This allows the EMS connection in the JMX plugin to find the
+            // classes needed to create a remoting connection.
+            connectionSettings.initializeConnectionType(new JSR160ConnectionTypeDescriptor());
+
+            ClassLoader ccl = Thread.currentThread().getContextClassLoader();
+
+            String protocol = pluginConfig.getSimpleValue(PROTOCOL, DEFAULT_PROTOCOL);
             connectionSettings.setServerUrl( //
-                "service:jmx:remoting-jmx://" //
+                "service:jmx:" + protocol + "://" //
                     + pluginConfig.getSimpleValue(HOSTNAME) //
                     + ":" //
                     + pluginConfig.getSimpleValue(PORT));
             connectionSettings.setPrincipal(pluginConfig.getSimpleValue(USERNAME));
             connectionSettings.setCredentials(pluginConfig.getSimpleValue(PASSWORD));
+            Properties p = new Properties();
+            p.put(JMXConnectorFactory.DEFAULT_CLASS_LOADER, ccl);
+
+            LOG.debug("server URL " + connectionSettings.getServerUrl());
+
+            String s = pluginConfig.getSimpleValue(CLIENT_JAR_LOCATION, "");
+            File clientJarFile = new File(s);
+            if (clientJarFile.canRead()) {
+                LOG.debug("loading classes from " + clientJarFile);
+                URL url = clientJarFile.toURI().toURL();
+                URLClassLoader ucl = new URLClassLoader(new URL[] { url });
+                p.put(JMXConnectorFactory.PROTOCOL_PROVIDER_CLASS_LOADER, ucl);
+            } else {
+                LOG.debug("can't load classes from " + clientJarFile);
+                p.put(JMXConnectorFactory.PROTOCOL_PROVIDER_CLASS_LOADER, ccl);
+            }
 
             ConnectionFactory connectionFactory = new ConnectionFactory();
+            connectionSettings.setAdvancedProperties(p);
             connectionFactory.discoverServerClasses(connectionSettings);
             ConnectionProvider connectionProvider = connectionFactory.getConnectionProvider(connectionSettings);
 
             return connectionProvider.connect();
-
-        } catch (Exception e) {
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Could not create EmsConnection", e);
-            }
-            if (emsConnection != null) {
-                emsConnection.close();
-            }
+        } catch (Throwable e) {
+            // Throwable to catch classloader errors
+            LOG.error("Could not create EmsConnection", e);
             return null;
         }
     }
 
-    private static class A7ConnectionTypeDescriptor extends JSR160ConnectionTypeDescriptor {
-        private final File clientJarFile;
-
-        public A7ConnectionTypeDescriptor(File clientJarFile) {
-            this.clientJarFile = clientJarFile;
-        }
-
-        @Override
-        public String[] getConnectionClasspathEntries() {
-            return new String[] { clientJarFile.getName() };
-        }
-    }
 }

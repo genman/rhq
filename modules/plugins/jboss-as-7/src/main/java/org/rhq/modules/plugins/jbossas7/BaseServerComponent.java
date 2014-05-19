@@ -184,10 +184,9 @@ public abstract class BaseServerComponent<T extends ResourceComponent<?>> extend
             throw new InvalidPluginConfigurationException("Failed to validate product type for "
                 + getResourceDescription(), e);
         }
-        if (runtimeProductName == null || runtimeProductName.trim().isEmpty()) {
-            runtimeProductName = JBossProductType.AS.PRODUCT_NAME;
-        }
-        if (!runtimeProductName.equals(expectedRuntimeProductName)) {
+        if (runtimeProductName != null && !runtimeProductName.trim().isEmpty() &&
+                !runtimeProductName.equals(expectedRuntimeProductName))
+        {
             throw new InvalidPluginConfigurationException(
                     "The original product type discovered for this server was " + expectedRuntimeProductName
                             + ", but the server is now reporting its product type is [" + runtimeProductName + "]");

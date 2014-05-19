@@ -1030,6 +1030,8 @@
         xmlns="urn:xmlns:rhq-plugin"
         xmlns:c="urn:xmlns:rhq-configuration">
 
+    <depends plugin="JMX" useClasses="true"/>
+
   <!-- TODO I think we should introduce an abstract AS7 plugin that contains some base functionality and then
   ~~      additional 'Personalities' for the kinds of servers (PM, SM, Standalone AS, Managed AS)
   -->
@@ -9088,7 +9090,7 @@
       </operation>
 
       &datasourceMetrics;
-	  
+
       <resource-configuration>
         <c:simple-property name="allocation-retry" required="false" type="integer" readOnly="true" description="The allocation retry element indicates the number of times that allocating a connection should be tried before throwing an exception"/>
         <c:simple-property name="allocation-retry-wait-millis" required="false" type="long" readOnly="true" description="The allocation retry wait millis element specifies the amount of time, in milliseconds, to wait between retrying to allocate a connection"/>
@@ -9211,7 +9213,7 @@
           <c:simple-property name="operationResult" description="Test if a connection can be obtained"/>
         </results>
       </operation>
-	  
+
       &datasourceMetrics;
 
       <resource-configuration>
