@@ -158,33 +158,6 @@ public class DataPurgeJob extends AbstractStatefulJob {
         }
     }
 
-    private void purgeOperationHistoryData(OperationManagerLocal operationManager, Properties systemConfig) {
-        long timeStart = System.currentTimeMillis();
-        int purgeCount = 0;
-
-        try {
-            String purgeThresholdStr = systemConfig.getProperty(RHQConstants.OperationHistoryPurge, "0");
-            long purgeThreshold = Long.parseLong(purgeThresholdStr);
-            if (purgeThreshold <= 0) {
-                LOG.info("Operation History threshold set to 0, skipping purge of operation history data.");
-                return;
-            }
-
-            LOG.info("Operation History data purge starting at " + new Date(timeStart));
-            long threshold = timeStart - purgeThreshold;
-
-            Date purgeBeforeTime = new Date(threshold);
-            LOG.info("Purging operation history older than " + purgeBeforeTime);
-            purgeCount = operationManager.purgeOperationHistory(purgeBeforeTime);
-
-        } catch (Exception e) {
-            LOG.error("Failed to purge operation history data. Cause: " + e, e);
-        } finally {
-            long duration = System.currentTimeMillis() - timeStart;
-            LOG.info("Operation history data purged [" + purgeCount + "] - completed in [" + duration + "]ms");
-        }
-    }
-
     private void purgeAvailabilityData(PurgeManagerLocal purgeManager, Properties systemConfig) {
         long timeStart = System.currentTimeMillis();
         LOG.info("Availability data purge starting at " + new Date(timeStart));
