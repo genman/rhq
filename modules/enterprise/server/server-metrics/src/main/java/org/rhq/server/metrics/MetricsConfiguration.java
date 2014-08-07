@@ -62,7 +62,7 @@ public class MetricsConfiguration {
 
     private int indexPageSize;
     {
-        String s = System.getProperty("rhq.storage.index-page-size", "250"); // from 2500
+        String s = System.getProperty("rhq.storage.index-page-size", "2500"); // from 2500
         indexPageSize = parseInt(s);
         LogFactory.getLog(getClass()).info("index page size " + indexPageSize);
     }

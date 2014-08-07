@@ -178,7 +178,8 @@ public class MetricsDAO {
         findPastCacheIndexEntriesFromToday = storageSession.prepare(
             "SELECT bucket, day, partition, collection_time_slice, start_schedule_id, insert_time_slice, schedule_ids " +
             "FROM " + MetricsTable.METRICS_CACHE_INDEX + " " +
-            "WHERE bucket = ? AND day = ? AND partition = ? AND collection_time_slice < ?");
+            "WHERE bucket = ? AND day = ? AND partition = ? AND collection_time_slice < ? " +
+            "LIMIT " + configuration.getIndexPageSize());
 
         findCurrentCacheIndexEntries = storageSession.prepare(
             "SELECT bucket, day, partition, collection_time_slice, start_schedule_id, insert_time_slice, schedule_ids " +
