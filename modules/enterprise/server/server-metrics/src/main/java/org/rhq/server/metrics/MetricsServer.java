@@ -100,6 +100,9 @@ public class MetricsServer {
      * that is set to no earlier than the start of the next day.
      */
     private boolean cacheEnabled = Boolean.parseBoolean(System.getProperty("rhq.metric.cache.enabled", "false"));
+    {
+        log.info("rhq.metric.cache.enabled? " + cacheEnabled);
+    }
 
     private Days rawDataAgeLimit = Days.days(Integer.parseInt(System.getProperty("rhq.metrics.data.age-limit", "3")));
 

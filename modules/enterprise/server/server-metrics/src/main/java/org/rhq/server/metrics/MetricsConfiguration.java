@@ -25,10 +25,12 @@
 
 package org.rhq.server.metrics;
 
+import static java.lang.Integer.parseInt;
+
+import org.apache.commons.logging.LogFactory;
 import org.joda.time.Days;
 import org.joda.time.Duration;
 import org.joda.time.ReadablePeriod;
-
 import org.rhq.server.metrics.domain.MetricsTable;
 
 /**
@@ -58,7 +60,12 @@ public class MetricsConfiguration {
 
     private Duration sixHourTimeSliceDuration = Duration.standardHours(24);
 
-    private int indexPageSize = 2500;
+    private int indexPageSize;
+    {
+        String s = System.getProperty("rhq.storage.index-page-size", "250"); // from 2500
+        indexPageSize = parseInt(s);
+        LogFactory.getLog(getClass()).info("index page size " + indexPageSize);
+    }
 
     public int getRawTTL() {
         return rawTTL;
