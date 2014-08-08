@@ -26,6 +26,7 @@
 package org.rhq.server.metrics;
 
 
+import java.text.SimpleDateFormat;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -38,7 +39,6 @@ import com.datastax.driver.core.ResultSet;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
 import org.rhq.core.domain.measurement.MeasurementDataNumeric;
 import org.rhq.server.metrics.domain.AggregateNumericMetric;
 import org.rhq.server.metrics.domain.AggregateNumericMetricMapper;
@@ -395,6 +395,14 @@ public class MetricsDAO {
 
     public StorageResultSetFuture findPastCacheIndexEntriesBeforeToday(MetricsTable table, long day, int partition,
         long collectionTimeSlice) {
+
+        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-DD HH:mm");
+        String s =
+            "SELECT bucket, day, partition, collection_time_slice, start_schedule_id, insert_time_slice, schedule_ids " +
+            "FROM " + MetricsTable.METRICS_CACHE_INDEX + " " +
+            "WHERE bucket = '" + table.getTableName() + "' AND day = '" + df.format(new Date(day)) + "' AND partition = " + partition +
+            " AND collection_time_slice >= '" + df.format(new Date(collectionTimeSlice));
+        log.info(s);
 
         BoundStatement statement = findPastCacheIndexEntriesBeforeToday.bind(table.getTableName(), new Date(day),
             partition, new Date(collectionTimeSlice));

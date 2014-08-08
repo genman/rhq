@@ -28,6 +28,7 @@ package org.rhq.cassandra.util;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.PoolingOptions;
 import com.datastax.driver.core.ProtocolOptions;
+import com.datastax.driver.core.SocketOptions;
 import com.datastax.driver.core.policies.LoadBalancingPolicy;
 import com.datastax.driver.core.policies.RetryPolicy;
 
@@ -45,6 +46,12 @@ public class ClusterBuilder {
     private Cluster.Builder builder = Cluster.builder();
 
     private ProtocolOptions.Compression compression;
+
+    public ClusterBuilder() {
+        SocketOptions options = new SocketOptions();
+        options.setReadTimeoutMillis(1000 * 60);
+        builder.withSocketOptions(options);
+    }
 
     /**
      * @see Cluster.Builder#addContactPoints(String...)
