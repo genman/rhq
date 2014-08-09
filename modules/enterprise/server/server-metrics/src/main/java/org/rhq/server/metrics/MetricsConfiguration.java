@@ -67,6 +67,12 @@ public class MetricsConfiguration {
         LogFactory.getLog(getClass()).info("index page size " + indexPageSize);
     }
 
+    /**
+     * TODO should be 1000 by default?
+     * Note this can't be reduced (without data loss I suppose)
+     */
+    private int partitions = Integer.parseInt(System.getProperty("rhq.metrics.partitions", "100"));
+
     public int getRawTTL() {
         return rawTTL;
     }
@@ -175,4 +181,9 @@ public class MetricsConfiguration {
     public void setIndexPageSize(int indexPageSize) {
         this.indexPageSize = indexPageSize;
     }
+
+    public int getSchedulePartitions() {
+        return this.partitions;
+    }
+
 }

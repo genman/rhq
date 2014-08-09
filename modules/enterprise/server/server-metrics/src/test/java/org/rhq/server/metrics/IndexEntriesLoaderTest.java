@@ -74,7 +74,7 @@ public class IndexEntriesLoaderTest extends MetricsTest {
 
     private void updateCacheIndex(DateTime day, int hour, int startScheduleId, Integer... scheduleIds) {
         DateTime timeSlice = day.plusHours(hour);
-        StorageResultSetFuture future = dao.updateCacheIndex(RAW, day.getMillis(), PARTITION, timeSlice.getMillis(),
+        StorageResultSetFuture future = dao.updateCacheIndex(RAW, day.getMillis(), timeSlice.getMillis(),
             startScheduleId, timeSlice.getMillis(), ImmutableSet.copyOf(scheduleIds));
         future.get();
     }

@@ -427,7 +427,7 @@ public class MetricsDAOTest extends CassandraIntegrationTest {
 
         WaitForWrite indexUpdates = new WaitForWrite(1);
 
-        StorageResultSetFuture indexFuture = dao.updateCacheIndex(MetricsTable.RAW, hour0().getMillis(), 0,
+        StorageResultSetFuture indexFuture = dao.updateCacheIndex(MetricsTable.RAW, hour0().getMillis(),
             pastTimeSlice.getMillis(), startScheduleId, currentTimeSlice.getMillis(), scheduleIds);
         Futures.addCallback(indexFuture, indexUpdates);
 
@@ -438,13 +438,12 @@ public class MetricsDAOTest extends CassandraIntegrationTest {
                 scheduleIds)
         );
 
-        StorageResultSetFuture queryFuture = dao.findPastCacheIndexEntriesBeforeToday(MetricsTable.RAW,
-            hour0().getMillis(), partition, pastTimeSlice.getMillis());
-        ResultSet resultSet = queryFuture.get();
+        RowIterable rows = dao.findPastCacheIndexEntriesBeforeToday(MetricsTable.RAW,
+            hour0().getMillis(), pastTimeSlice.getMillis());
         CacheIndexEntryMapper mapper = new CacheIndexEntryMapper();
         List<CacheIndexEntry> actual = new ArrayList<CacheIndexEntry>(2);
 
-        for (Row row : resultSet) {
+        for (Row row : rows) {
             actual.add(mapper.map(row));
         }
 
@@ -455,23 +454,20 @@ public class MetricsDAOTest extends CassandraIntegrationTest {
     public void deleteCacheIndexEntries() throws Exception {
         DateTime currentTimeSlice = hour0().plusHours(9);
         DateTime pastTimeSlice = hour0().plusHours(8);
-        int partition = 0;
         int startScheduleId = 100;
         Set<Integer> scheduleIds = ImmutableSet.of(122, 123);
 
-        StorageResultSetFuture indexFuture = dao.updateCacheIndex(MetricsTable.RAW, hour0().getMillis(), 0,
+        StorageResultSetFuture indexFuture = dao.updateCacheIndex(MetricsTable.RAW, hour0().getMillis(),
             currentTimeSlice.getMillis(), startScheduleId, currentTimeSlice.getMillis(), scheduleIds);
         indexFuture.get();
 
         StorageResultSetFuture deleteFuture = dao.deleteCacheIndexEntry(MetricsTable.RAW, hour0().getMillis(),
-            partition, currentTimeSlice.getMillis(), startScheduleId, currentTimeSlice.getMillis());
+            currentTimeSlice.getMillis(), startScheduleId, currentTimeSlice.getMillis());
         deleteFuture.get();
 
-        StorageResultSetFuture queryFuture = dao.findCurrentCacheIndexEntries(MetricsTable.RAW,
-            hour0().getMillis(), partition, currentTimeSlice.getMillis());
-        ResultSet resultSet = queryFuture.get();
-
-        assertTrue(resultSet.isExhausted(), "Expected an empty result set");
+        RowIterable rows = dao.findCurrentCacheIndexEntries(MetricsTable.RAW,
+            hour0().getMillis(), currentTimeSlice.getMillis());
+        assertTrue(!rows.iterator().hasNext(), "Expected an empty result set");
 
 //        List<CacheIndexEntry> expected = asList(newCacheIndexEntry(MetricsTable.RAW, hour0(), partition,
 //            currentTimeSlice, startScheduleId, currentTimeSlice, scheduleIds));

@@ -400,7 +400,7 @@ class PastDataAggregator extends BaseAggregator {
             @Override
             public ListenableFuture<ResultSet> apply(ResultSet deleteCacheResultSet) throws Exception {
                 return dao.deleteCacheIndexEntries(aggregationType.getCacheTable(), indexEntry.getDay(),
-                    indexEntry.getPartition(), indexEntry.getCollectionTimeSlice(), indexEntry.getStartScheduleId());
+                    indexEntry.getCollectionTimeSlice(), indexEntry.getStartScheduleId());
             }
         };
     }

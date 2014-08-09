@@ -26,16 +26,10 @@
 package org.rhq.server.metrics;
 
 
-import java.text.SimpleDateFormat;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import com.datastax.driver.core.BoundStatement;
-import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.ResultSet;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -51,6 +45,10 @@ import org.rhq.server.metrics.domain.RawNumericMetric;
 import org.rhq.server.metrics.domain.RawNumericMetricMapper;
 import org.rhq.server.metrics.domain.SimplePagedResult;
 
+import com.datastax.driver.core.BoundStatement;
+import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.ResultSet;
+
 
 /**
  * @author John Sanda
@@ -58,8 +56,6 @@ import org.rhq.server.metrics.domain.SimplePagedResult;
 public class MetricsDAO {
 
     private final Log log = LogFactory.getLog(MetricsDAO.class);
-
-    private static final Set<Integer> EMPTY_SCHEDULE_IDS = Collections.emptySet();
 
     private StorageSession storageSession;
 
@@ -386,66 +382,88 @@ public class MetricsDAO {
         return storageSession.executeAsync(statement);
     }
 
-    public StorageResultSetFuture updateCacheIndex(MetricsTable table, long day, int partition, long collectionTimeSlice,
+    public StorageResultSetFuture updateCacheIndex(MetricsTable table, long day, long collectionTimeSlice,
         int startScheduleId, long insertTimeSlice, Set<Integer> scheduleIds) {
+        int partition = getPartition(startScheduleId);
         BoundStatement statement = updateCacheIndex.bind(scheduleIds, table.getTableName(), new Date(day), partition,
             new Date(collectionTimeSlice), startScheduleId, new Date(insertTimeSlice));
         return storageSession.executeAsync(statement);
     }
 
-    public StorageResultSetFuture findPastCacheIndexEntriesBeforeToday(MetricsTable table, long day, int partition,
+    private int getPartitions() {
+        return configuration.getSchedulePartitions();
+    }
+
+    public RowIterable findPastCacheIndexEntriesBeforeToday(MetricsTable table, long day,
         long collectionTimeSlice) {
-
-        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-DD HH:mm");
-        String s =
-            "SELECT bucket, day, partition, collection_time_slice, start_schedule_id, insert_time_slice, schedule_ids " +
-            "FROM " + MetricsTable.METRICS_CACHE_INDEX + " " +
-            "WHERE bucket = '" + table.getTableName() + "' AND day = '" + df.format(new Date(day)) + "' AND partition = " + partition +
-            " AND collection_time_slice >= '" + df.format(new Date(collectionTimeSlice));
-        log.info(s);
-
-        BoundStatement statement = findPastCacheIndexEntriesBeforeToday.bind(table.getTableName(), new Date(day),
-            partition, new Date(collectionTimeSlice));
-        return storageSession.executeAsync(statement);
+        RowIterable ri = new RowIterable(storageSession);
+        for (int i = 0; i < getPartitions(); i++) {
+            BoundStatement statement = findPastCacheIndexEntriesBeforeToday.bind(table.getTableName(), new Date(day),
+                i, new Date(collectionTimeSlice));
+            ri.add(statement);
+        }
+        return ri;
     }
 
-    public StorageResultSetFuture findCacheIndexEntriesByDay(MetricsTable table, long day, int partition) {
-        BoundStatement statement = findCacheIndexEntriesByDay.bind(table.getTableName(), new Date(day), partition);
-        return storageSession.executeAsync(statement);
+    public RowIterable findCacheIndexEntriesByDay(MetricsTable table, long day) {
+        RowIterable ri = new RowIterable(storageSession);
+        for (int i = 0; i < getPartitions(); i++) {
+            BoundStatement statement = findCacheIndexEntriesByDay.bind(table.getTableName(), new Date(day), i);
+            ri.add(statement);
+        }
+        return ri;
     }
 
-    public StorageResultSetFuture findPastCacheIndexEntriesFromToday(MetricsTable table, long day, int partition,
+    public RowIterable findPastCacheIndexEntriesFromToday(MetricsTable table, long day,
         long collectionTimeSlice) {
-        BoundStatement statement = findPastCacheIndexEntriesFromToday.bind(table.getTableName(), new Date(day),
-            partition, new Date(collectionTimeSlice));
-        return storageSession.executeAsync(statement);
+        RowIterable ri = new RowIterable(storageSession);
+        for (int i = 0; i < getPartitions(); i++) {
+            BoundStatement statement = findPastCacheIndexEntriesFromToday.bind(table.getTableName(), new Date(day),
+                i, new Date(collectionTimeSlice));
+            ri.add(statement);
+        }
+        return ri;
     }
 
-    public StorageResultSetFuture findCurrentCacheIndexEntries(MetricsTable table, long day, int partition,
+    public RowIterable findCurrentCacheIndexEntries(MetricsTable table, long day,
         long collectionTimeSlice) {
-        BoundStatement statement = findCurrentCacheIndexEntries.bind(table.getTableName(), new Date(day),
-            partition, new Date(collectionTimeSlice));
-        return storageSession.executeAsync(statement);
+        RowIterable ri = new RowIterable(storageSession);
+        for (int i = 0; i < getPartitions(); i++) {
+            BoundStatement statement = findCurrentCacheIndexEntries.bind(table.getTableName(), new Date(day),
+                i, new Date(collectionTimeSlice));
+            ri.add(statement);
+        }
+        return ri;
     }
 
-    public StorageResultSetFuture findCurrentCacheIndexEntries(MetricsTable table, long day, int partition,
+    public RowIterable findCurrentCacheIndexEntries(MetricsTable table, long day,
         long collectionTimeSlice, int startScheduleId) {
-        BoundStatement statement = findCurrentCacheIndexEntriesFromOffset.bind(table.getTableName(), new Date(day),
-            partition, new Date(collectionTimeSlice), startScheduleId);
-        return storageSession.executeAsync(statement);
+        RowIterable ri = new RowIterable(storageSession);
+        for (int i = 0; i < getPartitions(); i++) {
+            BoundStatement statement = findCurrentCacheIndexEntriesFromOffset.bind(table.getTableName(), new Date(day),
+                i, new Date(collectionTimeSlice), startScheduleId);
+            ri.add(statement);
+        }
+        return ri;
     }
 
-    public StorageResultSetFuture deleteCacheIndexEntry(MetricsTable table, long day, int partition,
+    public StorageResultSetFuture deleteCacheIndexEntry(MetricsTable table, long day,
         long collectionTimeSlice, int startScheduleId, long insertTimeSlice) {
 
+        int partition = getPartition(startScheduleId);
         BoundStatement statement = deleteCacheIndexEntry.bind(table.getTableName(), new Date(day), partition,
             new Date(collectionTimeSlice), startScheduleId, new Date(insertTimeSlice));
         return storageSession.executeAsync(statement);
     }
 
-    public StorageResultSetFuture deleteCacheIndexEntries(MetricsTable table, long day, int partition,
+    private int getPartition(int startScheduleId) {
+        return getPartitions() % startScheduleId;
+    }
+
+    public StorageResultSetFuture deleteCacheIndexEntries(MetricsTable table, long day,
         long collectionTimeSlice, int startScheduleId) {
 
+        int partition = getPartition(startScheduleId);
         BoundStatement statement = deleteCacheIndexEntries.bind(table.getTableName(), new Date(day), partition,
             new Date(collectionTimeSlice), startScheduleId);
         return storageSession.executeAsync(statement);

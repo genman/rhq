@@ -1,6 +1,5 @@
 package org.rhq.server.metrics.aggregation;
 
-import static org.rhq.server.metrics.aggregation.AggregationManager.INDEX_PARTITION;
 import static org.rhq.server.metrics.domain.MetricsTable.RAW;
 
 import java.util.ArrayList;
@@ -10,8 +9,8 @@ import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 
 import org.joda.time.DateTime;
-
 import org.rhq.server.metrics.MetricsDAO;
+import org.rhq.server.metrics.RowIterable;
 import org.rhq.server.metrics.StorageResultSetFuture;
 import org.rhq.server.metrics.domain.CacheIndexEntry;
 import org.rhq.server.metrics.domain.CacheIndexEntryMapper;
@@ -51,19 +50,20 @@ public class IndexEntriesLoader {
             DateTime day = startDay;
             DateTime timeSlice = day.plusHours(currentTimeSlice.getHourOfDay());
             List<CacheIndexEntry> indexEntries = new ArrayList<CacheIndexEntry>();
-            StorageResultSetFuture future = dao.findPastCacheIndexEntriesBeforeToday(RAW, day.getMillis(),
-                INDEX_PARTITION, timeSlice.getMillis());
+            RowIterable rows = dao.findPastCacheIndexEntriesBeforeToday(RAW, day.getMillis(),
+                timeSlice.getMillis());
 
-            addResultSet(indexEntries, future);
+            addResultSet(indexEntries, rows);
             day = day.plusDays(1);
 
+            RowIterable future;
             while (day.isBefore(currentDay)) {
-                future = dao.findCacheIndexEntriesByDay(RAW, day.getMillis(), INDEX_PARTITION);
+                future = dao.findCacheIndexEntriesByDay(RAW, day.getMillis());
                 addResultSet(indexEntries, future);
                 day = day.plusDays(1);
             }
 
-            future = dao.findPastCacheIndexEntriesFromToday(RAW, currentDay.getMillis(), INDEX_PARTITION,
+            future = dao.findPastCacheIndexEntriesFromToday(RAW, currentDay.getMillis(),
                 currentTimeSlice.getMillis());
             addResultSet(indexEntries, future);
 
@@ -84,31 +84,33 @@ public class IndexEntriesLoader {
     public List<CacheIndexEntry> loadCurrentCacheIndexEntries(int pageSize, MetricsTable table) {
         try {
             List<CacheIndexEntry> indexEntries = new ArrayList<CacheIndexEntry>();
-            StorageResultSetFuture future = dao.findCurrentCacheIndexEntries(table, currentDay.getMillis(),
-                INDEX_PARTITION, currentTimeSlice.getMillis());
-            ResultSet resultSet = future.get();
+            RowIterable rows = dao.findCurrentCacheIndexEntries(table, currentDay.getMillis(),
+                currentTimeSlice.getMillis());
 
-            if (resultSet.isExhausted()) {
+            addResultSet(indexEntries, rows);
+            if (indexEntries.isEmpty())
                 return indexEntries;
-            }
-            addResultSet(indexEntries, future);
 
             while (indexEntries.size() % pageSize == 0) {
                 int startScheduleId = indexEntries.get(indexEntries.size() - 1).getStartScheduleId();
-                future = dao.findCurrentCacheIndexEntries(table, currentDay.getMillis(), INDEX_PARTITION,
+                rows = dao.findCurrentCacheIndexEntries(table, currentDay.getMillis(),
                     currentTimeSlice.getMillis(), startScheduleId);
-                resultSet = future.get();
-
-                if (resultSet.isExhausted()) {
+                int before = indexEntries.size();
+                addResultSet(indexEntries, rows);
+                if (before == indexEntries.size())
                     break;
-                }
-                addResultSet(indexEntries, resultSet);
             }
 
             return indexEntries;
         } catch (Exception e) {
             throw new CacheIndexQueryException("Failed to load cache index entries for current time slice " +
                 currentTimeSlice, e);
+        }
+    }
+
+    private void addResultSet(List<CacheIndexEntry> indexEntries, Iterable<Row> rows) {
+        for (Row row : rows) {
+            indexEntries.add(mapper.map(row));
         }
     }
 

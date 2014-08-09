@@ -332,7 +332,7 @@ abstract class BaseAggregator {
             @Override
             public ListenableFuture<ResultSet> apply(ResultSet deleteCacheResultSet) throws Exception {
                 return dao.deleteCacheIndexEntry(aggregationType.getCacheTable(), indexEntry.getDay(),
-                    indexEntry.getPartition(), indexEntry.getCollectionTimeSlice(), indexEntry.getStartScheduleId(),
+                    indexEntry.getCollectionTimeSlice(), indexEntry.getStartScheduleId(),
                     indexEntry.getInsertTimeSlice());
             }
         };

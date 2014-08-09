@@ -1,6 +1,5 @@
 package org.rhq.server.metrics.aggregation;
 
-import static org.rhq.server.metrics.aggregation.AggregationManager.INDEX_PARTITION;
 import static org.rhq.server.metrics.domain.MetricsTable.ONE_HOUR;
 import static org.rhq.server.metrics.domain.MetricsTable.SIX_HOUR;
 
@@ -72,7 +71,7 @@ class PersistFunctions {
                     futures.add(dao.updateMetricsCache(ONE_HOUR, start6HourTimeSlice,
                         pair.cacheIndexEntry.getStartScheduleId(), metric.getScheduleId(), metric.getTimestamp(),
                         metric.toMap()));
-                    futures.add(dao.updateCacheIndex(ONE_HOUR, pair.cacheIndexEntry.getDay(), INDEX_PARTITION,
+                    futures.add(dao.updateCacheIndex(ONE_HOUR, pair.cacheIndexEntry.getDay(),
                         start6HourTimeSlice, pair.cacheIndexEntry.getStartScheduleId(), start6HourTimeSlice,
                         pair.cacheIndexEntry.getScheduleIds()));
                 }
@@ -103,7 +102,7 @@ class PersistFunctions {
                     futures.add(dao.updateMetricsCache(SIX_HOUR, start24HourTimeSlice,
                         pair.cacheIndexEntry.getStartScheduleId(), metric.getScheduleId(), metric.getTimestamp(),
                         metric.toMap()));
-                    futures.add(dao.updateCacheIndex(SIX_HOUR, start24HourTimeSlice, INDEX_PARTITION,
+                    futures.add(dao.updateCacheIndex(SIX_HOUR, start24HourTimeSlice,
                         start24HourTimeSlice, pair.cacheIndexEntry.getStartScheduleId(), start24HourTimeSlice,
                         pair.cacheIndexEntry.getScheduleIds()));
                 }

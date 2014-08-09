@@ -24,6 +24,14 @@ public class CacheIndexEntryMapper {
         return indexEntry;
     }
 
+    public List<CacheIndexEntry> map(Iterable<Row> rows) {
+        List<CacheIndexEntry> entries = new ArrayList<CacheIndexEntry>();
+        for (Row row : rows) {
+            entries.add(map(row));
+        }
+        return entries;
+    }
+
     public List<CacheIndexEntry> map(ResultSet resultSet) {
         List<CacheIndexEntry> entries = new ArrayList<CacheIndexEntry>();
         for (Row row : resultSet) {

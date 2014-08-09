@@ -29,7 +29,6 @@ import org.rhq.server.metrics.domain.RawNumericMetricMapper;
  */
 public class AggregationManager {
 
-    public static final int INDEX_PARTITION = 0;
     private static final Comparator<AggregateNumericMetric> AGGREGATE_COMPARATOR = new Comparator<AggregateNumericMetric>() {
         @Override
         public int compare(AggregateNumericMetric left, AggregateNumericMetric right) {

@@ -502,10 +502,10 @@ public class MetricsTest extends CassandraIntegrationTest {
     private void assertCacheIndexEquals(MetricsTable bucket, DateTime collectionTimeSlice,
         List<CacheIndexEntry> expected) {
 
-        ResultSet resultSet = dao.findCurrentCacheIndexEntries(bucket, dateTimeService.get24HourTimeSlice(
-            collectionTimeSlice).getMillis(), 0, collectionTimeSlice.getMillis()).get();
+        RowIterable rows = dao.findCurrentCacheIndexEntries(bucket, dateTimeService.get24HourTimeSlice(
+            collectionTimeSlice).getMillis(), collectionTimeSlice.getMillis());
 
-        List<CacheIndexEntry> actual = cacheIndexEntryMapper.map(resultSet);
+        List<CacheIndexEntry> actual = cacheIndexEntryMapper.map(rows);
 
         assertCacheIndexEntriesEqual(actual, expected, bucket);
     }
@@ -522,9 +522,9 @@ public class MetricsTest extends CassandraIntegrationTest {
     protected void assertCacheIndexAfterEquals(MetricsTable bucket, DateTime collectionTimeSlice,
         List<CacheIndexEntry> expected) {
         DateTime day = dateTimeService.get24HourTimeSlice(collectionTimeSlice);
-        ResultSet resultSet = dao.findPastCacheIndexEntriesBeforeToday(bucket, day.getMillis(), 0,
-            collectionTimeSlice.getMillis()).get();
-        List<CacheIndexEntry> actual = cacheIndexEntryMapper.map(resultSet);
+        RowIterable rows = dao.findPastCacheIndexEntriesBeforeToday(bucket, day.getMillis(),
+            collectionTimeSlice.getMillis());
+        List<CacheIndexEntry> actual = cacheIndexEntryMapper.map(rows);
 
         assertCacheIndexEntriesEqual(actual, expected, bucket);
     }
@@ -541,9 +541,9 @@ public class MetricsTest extends CassandraIntegrationTest {
     private void assertCacheIndexBeforeEquals(MetricsTable bucket, DateTime collectionTimeSlice,
         List<CacheIndexEntry> expected) {
         DateTime day = dateTimeService.get24HourTimeSlice(collectionTimeSlice);
-        ResultSet resultSet = dao.findPastCacheIndexEntriesFromToday(bucket, day.getMillis(), 0,
-            collectionTimeSlice.getMillis()).get();
-        List<CacheIndexEntry> actual = cacheIndexEntryMapper.map(resultSet);
+        RowIterable rows = dao.findPastCacheIndexEntriesFromToday(bucket, day.getMillis(),
+            collectionTimeSlice.getMillis());
+        List<CacheIndexEntry> actual = cacheIndexEntryMapper.map(rows);
 
         assertCacheIndexEntriesEqual(actual, expected, MetricsTable.RAW);
     }

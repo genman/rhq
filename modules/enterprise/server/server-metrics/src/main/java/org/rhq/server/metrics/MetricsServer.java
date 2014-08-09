@@ -81,7 +81,7 @@ public class MetricsServer {
     private AtomicLong totalAggregationTime = new AtomicLong();
 
     private InvalidMetricsManager invalidMetricsManager;
-    
+
     private int numAggregationWorkers = 4;
 
     private ListeningExecutorService aggregationWorkers;
@@ -185,9 +185,9 @@ public class MetricsServer {
         DateTime day = dateTimeService.current24HourTimeSlice();
 
         CacheIndexEntryMapper mapper = new CacheIndexEntryMapper();
-        StorageResultSetFuture future = dao.findPastCacheIndexEntriesFromToday(MetricsTable.RAW, day.getMillis(), 0,
+        RowIterable rows = dao.findPastCacheIndexEntriesFromToday(MetricsTable.RAW, day.getMillis(),
             previousHour.getMillis());
-        List<CacheIndexEntry> indexEntries = mapper.map(future.get());
+        List<CacheIndexEntry> indexEntries = mapper.map(rows);
 
         if (!indexEntries.isEmpty()) {
             log.info("Raw data aggregate computations are up to date");
@@ -198,25 +198,25 @@ public class MetricsServer {
             DateTime hour;
 
             if (day.isAfter(oldestRawTime)) {
-                future = dao.findCacheIndexEntriesByDay(MetricsTable.RAW, day.getMillis(), 0);
+                rows = dao.findCacheIndexEntriesByDay(MetricsTable.RAW, day.getMillis());
             } else {
                 hour = day.plusHours(dateTimeService.currentHour().getHourOfDay());
-                future = dao.findPastCacheIndexEntriesBeforeToday(MetricsTable.RAW, day.getMillis(), 0,
+                rows = dao.findPastCacheIndexEntriesBeforeToday(MetricsTable.RAW, day.getMillis(),
                     hour.getMillis());
             }
-            indexEntries = mapper.map(future.get());
+            indexEntries = mapper.map(rows);
 
             while (indexEntries.isEmpty() && day.isAfter(oldestRawTime)) {
-                future = dao.findCacheIndexEntriesByDay(MetricsTable.RAW, day.getMillis(), 0);
-                indexEntries = mapper.map(future.get());
+                rows = dao.findCacheIndexEntriesByDay(MetricsTable.RAW, day.getMillis());
+                indexEntries = mapper.map(rows);
                 day = day.minus(configuration.getSixHourTimeSliceDuration());
             }
 
             if (indexEntries.isEmpty()) {
                 hour = day.plusHours(dateTimeService.currentHour().getHourOfDay());
-                future = dao.findPastCacheIndexEntriesBeforeToday(MetricsTable.RAW, day.getMillis(), 0,
+                rows = dao.findPastCacheIndexEntriesBeforeToday(MetricsTable.RAW, day.getMillis(),
                     hour.getMillis());
-                indexEntries = mapper.map(future.get());
+                indexEntries = mapper.map(rows);
 
                 if (indexEntries.isEmpty()) {
                     log.info("Did not find any raw data in the storage database since the last server shutdown. " +
@@ -566,7 +566,7 @@ public class MetricsServer {
                     collectionTimeSlice.getMillis(), startScheduleId, data.getScheduleId(), data.getTimestamp(),
                     ImmutableMap.of(AggregateType.VALUE.ordinal(), data.getValue()));
 
-                StorageResultSetFuture indexFuture = dao.updateCacheIndex(MetricsTable.RAW, day.getMillis(), partition,
+                StorageResultSetFuture indexFuture = dao.updateCacheIndex(MetricsTable.RAW, day.getMillis(),
                     collectionTimeSlice.getMillis(), startScheduleId, insertTimeSlice.getMillis(),
                     ImmutableSet.of(data.getScheduleId()));
 
@@ -574,7 +574,7 @@ public class MetricsServer {
             } else {
                 StorageResultSetFuture rawFuture = dao.insertRawData(data);
 
-                StorageResultSetFuture indexFuture = dao.updateCacheIndex(MetricsTable.RAW, day.getMillis(), partition,
+                StorageResultSetFuture indexFuture = dao.updateCacheIndex(MetricsTable.RAW, day.getMillis(),
                     collectionTimeSlice.getMillis(), startScheduleId, insertTimeSlice.getMillis(),
                     ImmutableSet.of(data.getScheduleId()));
 
