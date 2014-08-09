@@ -1,5 +1,6 @@
 package org.rhq.server.metrics;
 
+import static java.util.Collections.EMPTY_SET;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -29,11 +30,11 @@ public class RowIterable implements Iterable<Row> {
         final Iterator<BoundStatement> outer = list.iterator();
         return new Iterator<Row>() {
 
-            Iterator<Row> rows;
+            Iterator<Row> rows = EMPTY_SET.iterator();
 
             @Override
             public boolean hasNext() {
-                if ((rows == null || !rows.hasNext()) && outer.hasNext()) {
+                if (!rows.hasNext() && outer.hasNext()) {
                     BoundStatement bs = outer.next();
                     rows = ss.execute(bs).iterator();
                 }
